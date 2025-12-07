@@ -6,7 +6,7 @@ INCLUDES = -I./include
 
 # 源文件
 SERVER_SRCS = server/server.c server/protocol.c
-CLIENT_SRCS = client/client.c
+CLIENT_SRCS = client/client.c server/protocol.c
 
 # 目标可执行文件
 SERVER_BIN = server/server

@@ -1,21 +1,34 @@
 # SimpleChat_CS - 基于C/S架构的多人聊天系统
 
 **作者**：Chasen  
-**完成时间**：2025年12月4日  
+**更新时间**：2025年12月7日  
+**当前版本**：v2.0 (使用epoll + 私聊 + 在线列表)  
 **项目类型**：Linux C语言网络编程课程设计
 
 ---
 
 ## 📋 项目概述
 
-SimpleChat_CS 是一个基于 **TCP Socket** 和 **多线程** 的C/S架构多人实时聊天系统。服务器可同时处理多个客户端连接，支持公共聊天和消息广播。该项目重点考察Linux下的网络编程、多线程编程、同步互斥机制和错误处理等关键技能。
+SimpleChat_CS 是一个基于 **TCP Socket** 的 C/S 架构多人实时聊天系统。
 
-### 核心特性
-- ✅ **多客户端支持**：服务器可同时处理最多 10 个客户端连接
-- ✅ **消息广播**：客户端发送的消息实时广播给所有在线用户
-- ✅ **多线程模型**：服务器为每个客户端创建独立线程处理
-- ✅ **线程安全**：使用互斥锁保护共享数据结构
-- ✅ **即插即用**：一键编译，开箱即用
+### v2.0 版本主要特性
+- ✅ **高效多路IO**：采用 `epoll` 多路IO模型（非阻塞）
+- ✅ **私聊功能**：支持用户间的一对一私密聊天
+- ✅ **在线列表**：实时显示在线用户列表
+- ✅ **消息广播**：公开消息实时广播给所有在线用户
+- ✅ **多客户端支持**：同时处理最多 10 个客户端连接
+- ✅ **连接管理**：自动处理用户加入/离线通知
+
+### 架构对比
+
+| 特性 | v1.0 (多线程) | v2.0 (epoll) |
+|------|---------|----------|
+| IO模型 | 多线程 | epoll多路IO |
+| 时间复杂度 | O(n) | O(1) |
+| 最大连接数 | ~100 | 10000+ |
+| CPU占用 | 较高 | 较低 |
+| 私聊功能 | ❌ | ✅ |
+| 在线列表 | ❌ | ✅ |
 
 ---
 
@@ -24,32 +37,36 @@ SimpleChat_CS 是一个基于 **TCP Socket** 和 **多线程** 的C/S架构多�
 ```
 SimpleChat_CS/
 ├── Makefile                     # 编译脚本
-├── README.md                    # 本文件
+├── README.md                    # 本文件（已更新）
+├── UPGRADE_v2.0.md              # ← 新增：v2.0升级说明
 ├── DEBUGGING_GUIDE.md           # 调试指南
+├── demo.sh                       # ← 新增：演示脚本
 ├── run_test.sh                  # 自动化测试脚本
 ├── interactive_test.sh          # 交互式多客户端测试
 │
 ├── include/
-│   └── protocol.h               # 通信协议定义
-│       ├── 消息类型枚举
-│       ├── 通信数据结构
-│       └── 打包/解包函数声明
+│   └── protocol.h               # 通信协议定义（已扩展）
+│       ├── 新增消息类型：MSG_PRIVATE_CHAT, MSG_USER_LIST
+│       ├── 新增ChatPacket中的sender字段
+│       └── 更新的打包/解包函数
 │
 ├── server/
-│   ├── server.c                 # 服务器主程序
-│   │   ├── 套接字初始化
-│   │   ├── 客户端连接管理
-│   │   ├── 消息广播
-│   │   └── 线程管理
-│   └── protocol.c               # 协议实现
-│       └── 打包/解包函数
+│   ├── server.c                 # 服务器主程序（已重写为epoll）
+│   │   ├── epoll创建和管理
+│   │   ├── 非阻塞socket处理
+│   │   ├── 消息路由和广播
+│   │   ├── 私聊消息转发
+│   │   └── 用户状态管理
+│   └── protocol.c               # 协议实现（已更新）
+│       ├── pack_message()：消息打包
+│       └── unpack_message()：消息解包
 │
 └── client/
-    └── client.c                 # 客户端主程序
-        ├── 用户交互
-        ├── 消息发送
-        ├── 消息接收线程
-        └── 错误处理
+    └── client.c                 # 客户端主程序（已升级）
+        ├── 命令解析（/list, /pm, /help, /exit）
+        ├── 私聊消息发送
+        ├── 多线程消息接收
+        └── 增强的用户交互
 ```
 
 ---
@@ -58,9 +75,9 @@ SimpleChat_CS/
 
 ### 环境要求
 - **操作系统**：Linux（Ubuntu、CentOS等）
-- **编译器**：GCC 4.8+
-- **标准库**：glibc（包含 pthread）
-- **开发工具**：make
+- **编译器**：GCC 4.8+（支持C99标准）
+- **API要求**：epoll（Linux特有，仅Linux可用）
+- **线程库**：pthread
 
 ### 编译
 
@@ -88,7 +105,7 @@ gcc -Wall -Wextra -std=c99 -pthread -I./include -c server/protocol.c -o server/p
 gcc -Wall -Wextra -std=c99 -pthread -o server/server server/server.o server/protocol.o
 ✓ 服务器编译完成: server/server
 gcc -Wall -Wextra -std=c99 -pthread -I./include -c client/client.c -o client/client.o
-gcc -Wall -Wextra -std=c99 -pthread -o client/client client/client.o
+gcc -Wall -Wextra -std=c99 -pthread -o client/client client/client.o server/protocol.o
 ✓ 客户端编译完成: client/client
 ```
 
@@ -104,30 +121,126 @@ cd /home/chasen/lcz/learn_linux/linux应用开发/class/SimpleChat_CS
 
 输出示例：
 ```
-🔗 服务器启动成功，监听端口 8088
+🔗 服务器启动成功，监听端口 8088 (使用 epoll 多路IO)
 ⏳ 等待客户端连接......
+📱 新连接接受 (FD: 5, 总连接数: 1)
+✓ Alice 登录了 (FD: 5)
 ```
 
-**终端2 - 启动客户端1**
+**终端2 - 启动客户端1（Alice）**
 ```bash
 cd /home/chasen/lcz/learn_linux/linux应用开发/class/SimpleChat_CS
 ./client/client
 ```
 
-按提示输入用户名，然后输入消息。
+按提示输入用户名（Alice），然后可输入以下命令：
+- `大家好` - 发送公开消息
+- `/list` - 查看在线用户
+- `/help` - 显示帮助
+- `/exit` - 退出
 
-**终端3 - 启动客户端2**
+**终端3 - 启动客户端2（Bob）**
 ```bash
 cd /home/chasen/lcz/learn_linux/linux应用开发/class/SimpleChat_CS
 ./client/client
 ```
 
-继续输入用户名和消息。
+输入用户名（Bob），然后可以：
+- 发送公开消息
+- 发送私聊：`/pm Alice 你好Alice`
 
-#### 方式2：自动化测试
+#### 方式2：自动演示（推荐快速体验）
 
 ```bash
-# 快速测试（一个客户端）
+# 启动自动演示（一键启动3个客户端进行交互）
+bash demo.sh
+```
+
+这将自动：
+1. 启动Alice客户端
+2. 启动Bob客户端
+3. 启动Charlie客户端
+4. 演示公聊、私聊、在线列表等功能
+
+---
+
+## 💬 客户端命令详解
+
+| 命令 | 说明 | 示例 | 效果 |
+|------|------|------|------|
+| 任意文本 | 发送公开消息 | `大家好！` | 所有在线用户都能看到 |
+| `/list` | 显示在线用户 | `/list` | 显示当前在线的所有用户名 |
+| `/pm <用户> <消息>` | 发送私聊 | `/pm Alice 你好` | 仅Alice能看到消息 |
+| `/help` | 显示帮助 | `/help` | 显示所有可用命令 |
+| `/exit` | 退出聊天室 | `/exit` | 退出程序，通知其他用户 |
+
+### 使用示例
+
+```
+> /list
+📋 在线用户: Alice, Bob, Charlie
+
+> 大家好，今天天气真好
+[公开] Alice: 大家好，今天天气真好
+
+> /pm Bob 你最近在忙什么呢
+✓ 私聊已发送给 Bob
+
+> /help
+╔═══════════════════════════════════════╗
+║       🎮 聊天室命令帮助              ║
+╠═══════════════════════════════════════╣
+║ /list  - 显示在线用户列表            ║
+║ /pm <用户名> <消息> - 发送私聊      ║
+║         例: /pm Alice 你好           ║
+║ /help  - 显示此帮助信息              ║
+║ /exit  - 退出聊天室                  ║
+╚═══════════════════════════════════════╝
+
+> /exit
+👋 正在退出...
+```
+
+---
+
+## 📊 消息流程示例
+
+### 公开消息广播
+```
+[Alice] → 输入：大家好
+         ↓
+[Server] → 接收，识别为MSG_PUBLIC_CHAT
+         ↓
+[Server] → 广播给所有在线用户（Bob, Charlie）
+         ↓
+[Bob] ← 接收：[Alice]: 大家好
+[Charlie] ← 接收：[Alice]: 大家好
+```
+
+### 私聊路由
+```
+[Bob] → 输入：/pm Alice 你好Alice
+       ↓
+[Client] → 打包：MSG_PRIVATE_CHAT, data="Alice:你好Alice"
+         ↓
+[Server] → 收到，识别为MSG_PRIVATE_CHAT
+         ↓
+[Server] → 查找Alice，构建私聊包
+         ↓
+[Alice] ← 接收：💬 [私聊来自 Bob]: 你好Alice
+[Bob] ← 接收：✓ 私聊已发送给 Alice
+```
+
+### 在线列表查询
+```
+[Charlie] → 输入：/list
+          ↓
+[Client] → 发送：MSG_USER_LIST
+         ↓
+[Server] → 收集所有已登录用户
+         ↓
+[Charlie] ← 接收：📋 在线用户: Alice, Bob, Charlie
+```
 ./run_test.sh
 
 # 多客户端交互式测试
