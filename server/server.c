@@ -10,6 +10,9 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <stdarg.h>
+#include <signal.h>
 #include "../include/protocol.h"
 
 #define MAX_EVENTS 64
@@ -17,6 +20,10 @@
 // 全局客户端数组和计数
 ClientInfo *clients[MAX_CLIENTS];
 int client_count = 0;
+FILE *log_fp = NULL;
+time_t server_start_time = 0;
+char log_file_path[256];
+volatile sig_atomic_t running = 1;
 
 // 前置声明
 void broadcast_message(const char *sender, const char *message, int exclude_fd, int msg_type);
@@ -39,6 +46,58 @@ int set_nonblocking(int fd) {
     return 0;
 }
 
+static void log_event(const char *fmt, ...) {
+    if (!log_fp) return;
+    time_t now = time(NULL);
+    struct tm tm_now;
+    localtime_r(&now, &tm_now);
+    char ts[32];
+    strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", &tm_now);
+    fprintf(log_fp, "[%s] ", ts);
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(log_fp, fmt, ap);
+    va_end(ap);
+    fprintf(log_fp, "\n");
+    fflush(log_fp);
+}
+
+static int init_logger(void) {
+    server_start_time = time(NULL);
+    struct tm tm_start;
+    localtime_r(&server_start_time, &tm_start);
+    char tname[32];
+    strftime(tname, sizeof(tname), "%Y%m%d_%H%M%S", &tm_start);
+    mkdir("logs", 0755);
+    snprintf(log_file_path, sizeof(log_file_path), "logs/server_%s.log", tname);
+    log_fp = fopen(log_file_path, "a");
+    if (!log_fp) return -1;
+    char human[64];
+    strftime(human, sizeof(human), "%Y-%m-%d %H:%M:%S", &tm_start);
+    fprintf(log_fp, "=== Server Start: %s ===\n", human);
+    fprintf(log_fp, "Port: %d\n", PORT);
+    fflush(log_fp);
+    return 0;
+}
+
+void close_logger(void) {
+    if (log_fp) {
+        time_t end = time(NULL);
+        struct tm tm_end;
+        localtime_r(&end, &tm_end);
+        char human[64];
+        strftime(human, sizeof(human), "%Y-%m-%d %H:%M:%S", &tm_end);
+        fprintf(log_fp, "=== Server Stop: %s ===\n", human);
+        fclose(log_fp);
+        log_fp = NULL;
+    }
+}
+
+static void handle_signal(int sig) {
+    log_event("Received signal %d, shutting down", sig);
+    running = 0;
+}
+
 // 处理客户端消息
 void handle_client_message(int client_idx) {
     ClientInfo *client = clients[client_idx];
@@ -51,6 +110,7 @@ void handle_client_message(int client_idx) {
         } else {
             perror("recv");
         }
+        log_event("Disconnect %s fd=%d", client->name, client->sockfd);
         
         // 广播用户离线消息
         if (client->logged_in) {
@@ -74,6 +134,7 @@ void handle_client_message(int client_idx) {
             client->login_time = time(NULL);
             
             printf("✓ %s 登录了 (FD: %d)\n", client->name, client->sockfd);
+            log_event("Login %s fd=%d", client->name, client->sockfd);
             
             // 发送欢迎消息
             char welcome[BUFFER_SIZE];
@@ -87,6 +148,7 @@ void handle_client_message(int client_idx) {
             char join_msg[BUFFER_SIZE];
             snprintf(join_msg, BUFFER_SIZE, "[系统] %s 加入了聊天室", client->name);
             broadcast_message("系统", join_msg, client->sockfd, MSG_SYSTEM);
+            log_event("Join %s", client->name);
             
             break;
         }
@@ -96,6 +158,7 @@ void handle_client_message(int client_idx) {
             if (client->logged_in) {
                 printf("[公开] %s: %s\n", client->name, packet.data);
                 broadcast_message(client->name, packet.data, -1, MSG_PUBLIC_CHAT);
+                log_event("[public] %s: %s", client->name, packet.data);
             }
             break;
         }
@@ -119,6 +182,7 @@ void handle_client_message(int client_idx) {
                         send(clients[target_idx]->sockfd, &response, sizeof(ChatPacket), 0);
                         
                         printf("[私聊] %s -> %s: %s\n", client->name, target_name, message);
+                        log_event("[private] %s -> %s: %s", client->name, target_name, message);
                         
                         // 发送确认给发送者
                         char confirm[BUFFER_SIZE];
@@ -128,6 +192,7 @@ void handle_client_message(int client_idx) {
                         char error_msg[BUFFER_SIZE];
                         snprintf(error_msg, BUFFER_SIZE, "✗ 用户 '%s' 不在线", target_name);
                         send_system_message_to_client(client_idx, error_msg);
+                        log_event("[private_error] %s -> %s (not online)", client->name, target_name);
                     }
                 }
             }
@@ -145,6 +210,7 @@ void handle_client_message(int client_idx) {
         case MSG_DISCONNECT: {
             // 客户端主动断开连接
             printf("✗ %s 主动断开连接\n", client->name);
+            log_event("Disconnect %s fd=%d", client->name, client->sockfd);
             
             char leave_msg[BUFFER_SIZE];
             snprintf(leave_msg, BUFFER_SIZE, "[系统] %s 离开了聊天室", client->name);
@@ -304,6 +370,12 @@ int main(void)
     }
     
     printf("🔗 服务器启动成功，监听端口 %d (使用 epoll 多路IO)\n", PORT);
+    if (init_logger() == 0) {
+        log_event("Server started, listening on port %d", PORT);
+    }
+
+    signal(SIGINT, handle_signal);
+    signal(SIGTERM, handle_signal);
     
     // 创建epoll实例
     int epfd = epoll_create1(0);
@@ -327,13 +399,18 @@ int main(void)
     }
     
     printf("⏳ 等待客户端连接......\n");
+    log_event("Waiting for client connections");
     
     // epoll主循环
-    while (1)
+    while (running)
     {
         int nfds = epoll_wait(epfd, events, MAX_EVENTS, -1);
         if (nfds < 0)
         {
+            if (errno == EINTR) {
+                // 信号打断，继续根据running决定退出
+                continue;
+            }
             perror("epoll_wait");
             break;
         }
@@ -404,6 +481,9 @@ int main(void)
                     client_count++;
                     
                     printf("📱 新连接接受 (FD: %d, 总连接数: %d)\n", client_fd, client_count);
+                    char ip[INET_ADDRSTRLEN];
+                    inet_ntop(AF_INET, &client_addr.sin_addr, ip, sizeof(ip));
+                    log_event("New connection fd=%d from %s:%d", client_fd, ip, ntohs(client_addr.sin_port));
                 }
             }
             // 处理客户端数据
@@ -422,6 +502,7 @@ int main(void)
                 if (client_idx >= 0)
                 {
                     printf("✗ 连接错误: %s (FD: %d)\n", clients[client_idx]->name, fd);
+                    log_event("Connection error %s fd=%d", clients[client_idx]->name, fd);
                     remove_client(client_idx);
                 }
                 else
@@ -444,5 +525,6 @@ int main(void)
         }
     }
     
+    close_logger();
     return 0;
 }
