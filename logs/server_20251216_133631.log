@@ -1,0 +1,16 @@
+=== Server Start: 2025-12-16 13:36:31 ===
+Port: 8088
+[2025-12-16 13:36:31] Server started, listening on port 8088
+[2025-12-16 13:36:31] Waiting for client connections
+[2025-12-16 13:36:33] New connection fd=6 from 127.0.0.1:36560
+[2025-12-16 13:36:33] Login Alice fd=6
+[2025-12-16 13:36:33] Join Alice
+[2025-12-16 13:36:34] New connection fd=7 from 127.0.0.1:36564
+[2025-12-16 13:36:34] [public] Alice: Hi, everyone!
+[2025-12-16 13:36:34] [public] Alice: exit
+[2025-12-16 13:36:34] Disconnect Alice fd=6
+[2025-12-16 13:36:34] Login Bob fd=7
+[2025-12-16 13:36:34] Join Bob
+[2025-12-16 13:36:35] [public] Bob: Hello Alice!
+[2025-12-16 13:36:35] [public] Bob: exit
+[2025-12-16 13:36:35] Disconnect Bob fd=7

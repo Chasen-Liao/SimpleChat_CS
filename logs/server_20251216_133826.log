@@ -1,0 +1,63 @@
+=== Server Start: 2025-12-16 13:38:26 ===
+Port: 8088
+[2025-12-16 13:38:26] Server started, listening on port 8088
+[2025-12-16 13:38:26] Waiting for client connections
+[2025-12-16 13:38:37] New connection fd=6 from 127.0.0.1:37610
+[2025-12-16 13:38:37] Login Alice fd=6
+[2025-12-16 13:38:37] Join Alice
+[2025-12-16 13:38:38] [public] Alice: 大家好，我是Alice！
+[2025-12-16 13:38:39] New connection fd=7 from 127.0.0.1:37614
+[2025-12-16 13:38:39] Login Bob fd=7
+[2025-12-16 13:38:39] Join Bob
+[2025-12-16 13:38:40] [public] Bob: Hi Alice, 我是Bob
+[2025-12-16 13:38:42] New connection fd=8 from 127.0.0.1:37618
+[2025-12-16 13:38:42] Login Charlie fd=8
+[2025-12-16 13:38:42] Join Charlie
+[2025-12-16 13:38:42] [public] Alice: 等待Bob加入...
+[2025-12-16 13:38:43] [private] Bob -> Alice: 这是一条私密消息
+[2025-12-16 13:38:44] [public] Charlie: 大家好，我是Charlie
+[2025-12-16 13:38:46] Disconnect Bob fd=7
+[2025-12-16 13:38:47] Disconnect Alice fd=6
+[2025-12-16 13:38:47] Disconnect Charlie fd=8
+[2025-12-16 15:37:46] New connection fd=6 from 127.0.0.1:38682
+[2025-12-16 15:37:46] Login Alice fd=6
+[2025-12-16 15:37:46] Join Alice
+[2025-12-16 15:37:48] [public] Alice: 大家好！我是Alice
+[2025-12-16 15:37:49] New connection fd=7 from 127.0.0.1:38684
+[2025-12-16 15:37:49] Login Bob fd=7
+[2025-12-16 15:37:49] Join Bob
+[2025-12-16 15:37:51] [public] Bob: Hello, 我是Bob
+[2025-12-16 15:37:52] Disconnect Alice fd=6
+[2025-12-16 15:37:53] [private_error] Bob -> Alice (not online)
+[2025-12-16 15:37:54] New connection fd=6 from 127.0.0.1:39594
+[2025-12-16 15:37:54] Login Charlie fd=6
+[2025-12-16 15:37:54] Join Charlie
+[2025-12-16 15:37:55] Disconnect Bob fd=7
+[2025-12-16 15:37:57] [public] Charlie: 公开消息：大家好！
+[2025-12-16 15:37:59] [private_error] Charlie -> Alice (not online)
+[2025-12-16 15:38:01] Disconnect Charlie fd=6
+[2025-12-16 15:38:30] New connection fd=6 from 127.0.0.1:38480
+[2025-12-16 15:38:30] Login TestUser fd=6
+[2025-12-16 15:38:30] Join TestUser
+[2025-12-16 15:38:31] [public] TestUser: Message 1
+[2025-12-16 15:38:32] [public] TestUser: Message 2
+[2025-12-16 15:38:36] Disconnect TestUser fd=6
+[2025-12-16 15:39:37] New connection fd=6 from 127.0.0.1:38786
+[2025-12-16 15:39:37] Login Alice fd=6
+[2025-12-16 15:39:37] Join Alice
+[2025-12-16 15:39:39] [public] Alice: 大家好！我是Alice
+[2025-12-16 15:39:40] New connection fd=7 from 127.0.0.1:38800
+[2025-12-16 15:39:40] Login Bob fd=7
+[2025-12-16 15:39:40] Join Bob
+[2025-12-16 15:39:42] [public] Bob: Hello, 我是Bob
+[2025-12-16 15:39:43] Disconnect Alice fd=6
+[2025-12-16 15:39:44] [private_error] Bob -> Alice (not online)
+[2025-12-16 15:39:45] New connection fd=6 from 127.0.0.1:39622
+[2025-12-16 15:39:45] Login Charlie fd=6
+[2025-12-16 15:39:45] Join Charlie
+[2025-12-16 15:39:46] Disconnect Bob fd=7
+[2025-12-16 15:39:48] [public] Charlie: 公开消息：大家好！
+[2025-12-16 15:39:50] [private_error] Charlie -> Alice (not online)
+[2025-12-16 15:39:52] Disconnect Charlie fd=6
+[2025-12-16 15:48:49] Received signal 2, shutting down
+=== Server Stop: 2025-12-16 15:48:49 ===
